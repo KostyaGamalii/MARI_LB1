@@ -1,0 +1,23 @@
+c Z. Mycielski, Scientia, Series A, Vol. 3, 1989, pp. 1-13.
+c Chromatic number = 4
+p edge 11 20
+e 1 2
+e 1 4
+e 1 7
+e 1 10
+e 2 3
+e 2 6
+e 2 9
+e 3 5
+e 3 8
+e 4 5
+e 4 8
+e 4 11
+e 5 7
+e 5 11
+e 6 7
+e 6 11
+e 7 9
+e 8 10
+e 9 10
+e 10 11

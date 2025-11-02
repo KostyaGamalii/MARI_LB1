@@ -36,25 +36,36 @@ class AntColonyGraphColoring:
 
     def solve(self):
         for i in range(self.n_iterations):
-            iteration_best_coloring = {}
+            iteration_best_coloring = None
             iteration_best_color_count = float('inf')
 
             for _ in range(self.n_ants):
                 coloring, num_colors = self._construct_solution_for_ant()
+
                 if num_colors < iteration_best_color_count:
                     iteration_best_color_count = num_colors
                     iteration_best_coloring = coloring
 
-            if iteration_best_color_count < self.best_color_count:
+            if iteration_best_coloring and iteration_best_color_count < self.best_color_count:
                 self.best_color_count = iteration_best_color_count
                 self.best_coloring = iteration_best_coloring
 
-            self._update_pheromones()
+            if self.best_coloring:
+                self._update_pheromones()
 
             if (i + 1) % 10 == 0:
-                print(f"Ітерація {i + 1}: Найкраща кількість кольорів = {self.best_color_count}")
+                cost_str = self.best_color_count if self.best_color_count != float('inf') else "N/A"
+                print(f"Ітерація {i + 1}: Найкраща кількість кольорів = {cost_str}")
 
         return self.best_coloring, self.best_color_count
+
+    def _validate_coloring(self, coloring):
+        if not coloring or len(coloring) < self.graph.num_vertices:
+            return False
+        for u, v in self.graph.edges:
+            if coloring.get(u) == coloring.get(v):
+                return False
+        return True
 
     def _construct_solution_for_ant(self):
         coloring = {}
@@ -66,6 +77,9 @@ class AntColonyGraphColoring:
             color = self._select_color_for_vertex(vertex, coloring)
             coloring[vertex] = color
             uncolored_vertices.remove(vertex)
+
+        if not self._validate_coloring(coloring):
+            return {}, float('inf')
 
         num_colors = len(set(coloring.values()))
         return coloring, num_colors
@@ -89,32 +103,35 @@ class AntColonyGraphColoring:
 
     def _select_color_for_vertex(self, vertex, coloring):
         neighbor_colors = {coloring[n] for n in self.graph.neighbors(vertex) if n in coloring}
+        used_colors = set(coloring.values())
 
         color_probabilities = {}
         total_prob = 0.0
-        used_colors = set(coloring.values())
 
-        for color in range(self.graph.num_vertices):
+        num_existing_colors = len(used_colors)
+        possible_colors = range(num_existing_colors + 1)
+
+        for color in possible_colors:
             if color not in neighbor_colors:
                 pheromone = self.pheromone[vertex][color] ** self.alpha
-
-                heuristic = (1.0 if color in used_colors else 0.5) ** self.beta
-
+                heuristic = (1.0 if color < num_existing_colors else 0.5) ** self.beta
                 prob = pheromone * heuristic
                 color_probabilities[color] = prob
                 total_prob += prob
 
         if total_prob == 0:
-            return max(used_colors) + 1 if used_colors else 0
+            return num_existing_colors
 
         rand_val = random.uniform(0, total_prob)
         cumulative_prob = 0
-        for color, prob in color_probabilities.items():
+        sorted_colors = sorted(color_probabilities.items(), key=lambda item: item[0])
+
+        for color, prob in sorted_colors:
             cumulative_prob += prob
             if cumulative_prob >= rand_val:
                 return color
 
-        return list(color_probabilities.keys())[-1]  # Fallback
+        return sorted_colors[-1][0]
 
     def _update_pheromones(self):
         for i in range(self.graph.num_vertices):
@@ -188,18 +205,16 @@ def run_test(filename):
     print("\n" + "-" * 40)
     print(f"РЕЗУЛЬТАТИ ДЛЯ '{filename}'")
     if best_coloring:
-        print(f"Знайдено розфарбування з {best_color_count} кольорами.")
-
+        print(f"Знайдено **валідне** розфарбування з {best_color_count} кольорами.")
         print("Приклад розфарбування (перші 15 вершин):")
         for i in sorted(best_coloring.keys())[:15]:
             print(f"  Вершина {i + 1}: Колір {best_coloring[i]}")
     else:
-        print("Не вдалося знайти розв'язок.")
+        print("Не вдалося знайти валідний розв'язок.")
     print("-" * 40)
 
 
 if __name__ == '__main__':
     test_files = ["myciel3.col", "queen5_5.col", "jean.col"]
-
     for file in test_files:
         run_test(file)
